@@ -1,0 +1,7 @@
+//from sklearn.ensemble import RandomForestClassifier
+//from sklearn.datasets import make_classification
+
+clf = RandomForestClassifier(random_state=0).fit(Rdf.drop(labels='capsule', axis=1).values, Rdf['capsule'].values)
+# print(df)
+f.create_model(clf,"RandomForestClassifier","MICSV","capsule")
+
