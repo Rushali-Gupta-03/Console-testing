@@ -1,0 +1,5 @@
+#from statsmodels.tsa.arima.model import ARIMA
+clf=ARIMA(table['Unemployment.rate'],order=(1,1,1))
+# model_fit=model.fit()
+# model_fit.summary()
+f.create_model(clf,"ARIMA","ME_CSV_TS","Unemployment.rate")
