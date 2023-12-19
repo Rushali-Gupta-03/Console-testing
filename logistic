@@ -1,0 +1,26 @@
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from sklearn.datasets import load_iris
+from sklearn.linear_model import LogisticRegression
+# from sklearn.linear_model import LogisticRegression
+# # from sklearn import preprocessing
+# # from sklearn.model_selection import train_test_split
+# from sklearn.datasets import make_classification
+# # from sklearn.linear_model import LogisticRegression
+# # from sklearn.metrics import confusion_matrix, classification_report
+from Console.package import Functions
+
+
+f = Functions()
+
+df = f.get_args("df")
+# X, y = load_iris(return_X_y=True)
+# clf = LogisticRegression(random_state=0).fit(X, y)
+# clf.predict(X[:2, :])
+# clf.predict_proba(X[:2, :])
+# clf.score(X, y)
+# your code here
+clf = LogisticRegression(random_state=0).fit(df.drop(labels='capsule', axis=1).values, df['capsule'].values)
+f.create_model(clf,"LogisticRegressionClassifier","ME_CSV","capsule")
