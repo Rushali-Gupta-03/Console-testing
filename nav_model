@@ -1,0 +1,26 @@
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from sklearn.naive_bayes import GaussianNB
+from Console.package import Functions
+
+
+f = Functions()
+
+df = f.get_args("df")
+X = df.drop(columns="capsule")
+Y = df["capsule"]
+# your code here
+clf = GaussianNB()
+model=clf.fit(X, Y)
+# GaussianNB()
+# print(clf.predict([[-0.8, -1]]))
+# clf_pf = GaussianNB()
+# clf_pf.partial_fit(X, Y, np.unique(Y))
+# GaussianNB()
+# print(clf_pf.predict([[-0.8, -1]]))
+
+# clf = GaussianNB(random_state=0).fit(df.drop(labels='capsule', axis=1).values, df['capsule'].values)
+# # print(df)
+f.create_model(model,"GaussianNB","ME_CSV","capsule")
