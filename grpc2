@@ -1,0 +1,51 @@
+from warpdrive import WarpDrive
+
+
+wd = WarpDrive()
+
+test_df = wd.get_args("test_df")
+train_df = wd.get_args("train_df")
+# your code here
+
+!pip install grpcio==1.66.2 grpcio-tools==1.66.2 plotly
+model_url = "13.233.198.161:50052"
+import grpc
+import pyarrow as pa
+import pandas as pd
+import model_pb2
+import model_pb2_grpc
+
+from random import randint
+from timeit import default_timer as timer
+
+# open a gRPC channel
+channel = grpc.insecure_channel(model_url)
+
+# create a stub (client)
+stub = model_pb2_grpc.ModelServiceStub(channel)
+test_pred = []
+for index, row in test_df.iterrows():
+    # Extract features for each row
+    features = [row['age'], row['race'], row['dpros'], row['dcaps'], row['psa'], row['vol'], row['gleason']]
+    #make the call
+    response = stub.Predict(model_pb2.PredictRequest(features=features))
+    print(f'Prediction: {response.prediction}')
+
+    test_pred.append(int(response.prediction))
+test_pred
+test_pred_df = pd.DataFrame(test_pred, columns=['predictions'])
+wd.create_df(test_pred_df, "Test Pred")
+train_pred = []
+for index, row in train_df.iterrows():
+    # Extract features for each row
+    features = [row['age'], row['race'], row['dpros'], row['dcaps'], row['psa'], row['vol'], row['gleason']]
+    #make the call
+    response = stub.Predict(model_pb2.PredictRequest(features=features))
+    print(f'Prediction: {response.prediction}')
+
+    train_pred.append(int(response.prediction))
+train_pred
+train_pred_df = pd.DataFrame(train_pred, columns=['predictions'])
+wd.create_df(train_pred_df, "Train Pred")
+train_actual = train_df['capsule'].to_list()
+test_actual = test_df['capsule'].to_list()

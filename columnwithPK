@@ -1,0 +1,15 @@
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from Console.package import Functions
+
+
+f = Functions()
+
+# your code here
+df=pd.DataFrame()
+
+df["pk"]=range(0,10)
+
+f.save_table(df)

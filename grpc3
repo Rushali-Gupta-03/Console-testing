@@ -1,0 +1,79 @@
+from warpdrive import WarpDrive
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+
+wd = WarpDrive()
+
+train_df = wd.get_args("train_df")
+test_df = wd.get_args("test_df")
+train_actual = wd.get_args("train_actual")
+test_actual = wd.get_args("test_actual")
+# your code here
+
+ 
+
+train_df = train_df['predictions'].to_list()
+test_df = test_df['predictions'].to_list()
+
+train_actual = train_actual['capsule'].to_list()
+test_actual = test_actual['capsule'].to_list()
+
+
+def binary_classification_metrics(actual, predicted, dataset_name):
+    # Calculate metrics
+    accuracy = accuracy_score(actual, predicted)
+    precision = precision_score(actual, predicted)
+    recall = recall_score(actual, predicted)
+    f1 = f1_score(actual, predicted)
+    cm = confusion_matrix(actual, predicted)
+ 
+    # Print metrics
+    print(f'Accuracy: {accuracy:.2f}')
+    print(f'Precision: {precision:.2f}')
+    print(f'Recall: {recall:.2f}')
+    print(f'F1 Score: {f1:.2f}')
+    print('Confusion Matrix:')
+    print(cm)
+   
+     # Create a DataFrame for the metrics
+    metrics_df = pd.DataFrame({
+        'Metric': ['Dataset','Accuracy', 'Precision', 'Recall', 'F1 Score'],
+        'Value': [dataset_name,accuracy, precision, recall, f1]
+    })
+   
+    # Plot confusion matrix using Plotly
+    fig = go.Figure(data=go.Heatmap(
+        z=cm,
+        x=['Predicted 0', 'Predicted 1'],
+        y=['Actual 0', 'Actual 1'],
+        hoverongaps=False,
+        colorscale='Blues'
+    ))
+   
+    fig.update_layout(
+        title=f'Confusion Matrix : {dataset_name}',
+        xaxis=dict(title='Predicted Label'),
+        yaxis=dict(title='Actual Label')
+    )
+   
+    fig.show()
+   
+    return fig, metrics_df
+# Metrics & Plots
+ 
+##Model 1
+ 
+#Train
+fig1,metrics1=binary_classification_metrics(train_actual, train_df, "Train : Model 1")
+ 
+wd.save_graph(fig1)
+wd.save_table(metrics1)
+ 
+#Test
+fig4,metrics4=binary_classification_metrics(test_actual, test_df, "Test : Model 1")
+
+wd.save_graph(fig4)
+wd.save_table(metrics4)
+ 

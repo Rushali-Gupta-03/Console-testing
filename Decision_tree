@@ -1,0 +1,15 @@
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from sklearn.tree import DecisionTreeClassifier
+from Console.package import Functions
+
+
+f = Functions()
+
+df = f.get_args("df")
+# your code here
+clf = DecisionTreeClassifier(random_state=0).fit(df.drop(labels='capsule', axis=1).values, df['capsule'].values)
+# print(df)
+f.create_model(clf,"DecisionTreeClassifier","ME_CSV","capsule")

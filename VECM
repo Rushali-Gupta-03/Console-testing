@@ -1,0 +1,79 @@
+# Install required libraries using pip
+!pip install -r requirements.txt
+
+# Import necessary libraries
+from warpdrive import WarpDrive
+import pandas as pd
+import numpy as np
+import statsmodels.api as sm
+from statsmodels.tsa.vector_ar.vecm import VECM 
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+
+# Initialize WarpDrive
+wd = WarpDrive()
+
+# Assuming 'df' is already loaded via WarpDrive
+df = wd.get_args("df")
+
+# Sample synthetic data for multiple time series
+np.random.seed(0)
+
+# Simulated dependent variables (e.g., sales and advertising spend data)
+n = 100
+y1 = np.random.randn(n)  # e.g., sales data
+y2 = np.random.randn(n)  # e.g., advertising spend
+
+# Combine both series into a DataFrame
+df_time_series = pd.DataFrame({"Date": y1, "Time": y2})
+
+# Train-test split (80% for training, 20% for testing)
+y_train, y_test = train_test_split(df_time_series, test_size=0.2, shuffle=False)
+
+# Fit VECM model
+# VECM is used for multiple time series, so we fit it on the entire set of columns (Sales, Advertising_Spend)
+# Assume that there is 1 cointegration relationship (you can adjust based on your data)
+vecm_model = VECM(y_train, k_ar_diff=1, coint_rank=1)
+
+# Fit the VECM model
+vecm_fitted = vecm_model.fit()
+
+# Print the summary of the VECM model
+print(vecm_fitted.summary())
+
+# Make predictions (forecasting) using the test data
+forecast_steps = len(y_test)
+y_forecast = vecm_fitted.predict(steps=forecast_steps)
+
+# Plot actual vs. forecasted values
+plt.figure(figsize=(10, 6))
+plt.plot(y_test['Date'], label='Actual Sales', color='blue')
+plt.plot(y_forecast[:, 0], label='Forecasted Sales', color='red', linestyle='--')
+plt.plot(y_test['Time'], label='Actual Advertising Spend', color='green')
+plt.plot(y_forecast[:, 1], label='Forecasted Advertising Spend', color='orange', linestyle='--')
+plt.legend()
+plt.title('VECM Forecast vs Actual')
+plt.xlabel('Time')
+plt.ylabel('Value')
+plt.show()
+wd.save_image(plt)
+# Forecasting results
+print("\nForecasted values:")
+print(y_forecast)
+
+# WarpDrive Integration: Create model in WarpDrive
+# Specify the target column (e.g., 'Sales') and exogenous variables (e.g., 'Advertising_Spend')
+target_column = "Sales"  # Adjust as per your dataset
+exog_columns = ["Advertising_Spend"]  # Exogenous variables in the model (e.g., Advertising Spend)
+
+# Create and register the VECM model with WarpDrive
+wd.create_model(
+    model=vecm_model,
+    library="statsmodels",
+    model_technique="VECM",  # Specify that the technique is VECM
+    input_variables=exog_columns,
+    target_column=target_column,
+    train_table="df",
+    lags=1,  # Adjust the number of lags (1 in this case as we used k_ar_diff=1)
+    exog_columns=exog_columns
+)

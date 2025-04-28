@@ -1,0 +1,16 @@
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import xgboost as xgb
+from sklearn import XGBClassifier
+from Console.package import Functions
+
+
+f = Functions()
+
+df = f.get_args("df")
+# your code here
+clf = XGBClassifier(random_state=0).fit(df.drop(labels='capsule', axis=1).values, df['capsule'].values)
+# print(df)
+f.create_model(clf,"XGBClassifier","ME_CSV","capsule")

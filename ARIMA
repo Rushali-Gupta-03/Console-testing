@@ -1,0 +1,19 @@
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from Console.package import Functions
+import statsmodels.api as sm
+
+f = Functions()
+
+df = f.get_args("df")
+
+def arima_func(df):
+  model = sm.tsa.ARIMA(df.DJI_log, order=(2,3,4)) 
+  res_arima = model.fit()
+  return res_arima
+
+arima_result = arima_func(df)
+
+f.create_model_ts(arima_result, "ARIMA", "chk_insample", "DJI_log")

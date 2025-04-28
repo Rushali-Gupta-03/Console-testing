@@ -1,0 +1,308 @@
+import warnings
+warnings.filterwarnings("ignore")
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objs as go
+from Console.package import Functions
+
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
+from sklearn.metrics import confusion_matrix, roc_curve, roc_auc_score, accuracy_score, precision_score, recall_score, f1_score
+
+
+f = Functions()
+
+data = f.get_args("data")
+monitoring_df_1 = f.get_args("monitoring_df_1")
+monitoring_df_2 = f.get_args("monitoring_df_2")
+target_column = f.get_args("target_column")
+# your code here
+
+def train_models(data, target_column_name):
+    """
+    Train Logistic Regression, Random Forest Classifier, and XGBoost Classifier models.
+    
+    Parameters:
+        data (DataFrame): Entire dataset including features and target column.
+        target_column_name (str): Name of the target column.
+        
+    Returns:
+        models (dict): Dictionary containing trained models.
+    """
+    # Split data into features (X) and target (y)
+    X = data.drop(target_column_name, axis=1)
+    y = data[target_column_name]
+    
+    # Split data into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Scale the features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Train Logistic Regression model
+    lr_model = LogisticRegression(solver='sag')
+    lr_model.fit(X_train_scaled, y_train)
+    
+    # Train Random Forest Classifier model
+    rf_model = RandomForestClassifier(random_state = 42, criterion='entropy')
+    rf_model.fit(X_train_scaled, y_train)
+    
+    # Train XGBoost Classifier model
+    xgb_model = XGBClassifier()
+    xgb_model.fit(X_train_scaled, y_train)
+    
+    # Store trained models in a dictionary
+    models = {
+        'Logistic Regression': lr_model,
+        'Random Forest Classifier': rf_model,
+        'XGBoost Classifier': xgb_model
+    }
+    
+    return models, X_test, y_test, lr_model, rf_model, xgb_model
+
+trained_models,  X_test, y_test, lr_model, rf_model, xgb_model= train_models(data, target_column)
+
+import numpy as np
+def evaluate_models(trained_models, X_test, y_test):
+    """
+    Evaluate trained models and generate a DataFrame of evaluation metrics.
+    
+    Parameters:
+        trained_models (dict): Dictionary containing trained models.
+        X_test (DataFrame): Test features.
+        y_test (Series): Test labels.
+        
+    Returns:
+        metrics_df (DataFrame): DataFrame of evaluation metrics.
+    """
+    metrics = []
+    for model_name, model in trained_models.items():
+        # Predictions
+        y_pred = model.predict(X_test)
+        y_prob = model.predict_proba(X_test)[:, 1]
+        
+        # Evaluation metrics
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        
+        metrics.append([model_name, accuracy, precision, recall, f1])
+        
+        # Confusion Matrix Plot
+        cm = confusion_matrix(y_test, y_pred)
+        x = ['Predicted Negative', 'Predicted Positive']
+        y = ['Actual Negative', 'Actual Positive']
+        z = cm.tolist()
+        # Generate text labels for each cell of the confusion matrix
+        fig = go.Figure(data=go.Heatmap(z=z, x=x, y=y, colorscale='blues',showscale = True))
+        
+        annotations = []
+        for i, row in enumerate(z):
+            for j, value in enumerate(row):
+                color = 'black' if value < (cm.max() / 2) else 'white'
+                annotations.append({
+                    "x": x[j],
+                    "y": y[i],
+                    "font": {"color": color, "size": 16},
+                    "text": str(value),
+                    "xref": "x1",
+                    "yref": "y1",
+                    "showarrow": False
+                })
+        
+        fig.update_layout(
+            title=f'Confusion Matrix - {model_name}',
+            title_x=0.5,
+            annotations=annotations
+        )
+        
+        fig.show()
+        # f.save_graph(fig)
+        
+        # ROC-AUC Curve Plot
+        fpr, tpr, _ = roc_curve(y_test, y_prob)
+        auc_score = roc_auc_score(y_test, y_prob)
+        
+        roc_trace = go.Scatter(x=fpr,
+                               y=tpr,
+                               mode='lines',
+                               name=f'{model_name} (AUC = {auc_score:.2f})')
+        
+        roc_layout = go.Layout(title=f'ROC-AUC Curve - {model_name}',
+                               xaxis=dict(title='False Positive Rate'),
+                               yaxis=dict(title='True Positive Rate'))
+        
+        fig_roc = go.Figure(data=[roc_trace], layout=roc_layout)
+        fig_roc.add_shape(type='line', line=dict(dash='dash'), x0=0, x1=1, y0=0, y1=1)
+        fig_roc.show()
+        # f.save_graph(fig_roc)
+    
+    # Create DataFrame of evaluation metrics
+    metrics_df = np.round(pd.DataFrame(metrics, columns=['Model', 'Accuracy', 'Precision', 'Recall', 'F1-Score']),2)
+    metrics_df['Accuracy'] = pd.to_numeric(metrics_df['Accuracy'])
+    metrics_df = metrics_df.sort_values(by='Accuracy', ascending=False)
+    metrics_df = metrics_df.reset_index(drop=True)
+    f.save_table(metrics_df, "Development Data")
+    return metrics_df
+
+# Example usage:
+evaluate_models(trained_models, X_test, y_test)
+
+
+##############################################################################################
+##############################################################################################
+##############################################################################################
+def evaluate_monitoring_data(data, target_column_name, models, dataset_name):
+    """
+    Evaluate model performance on monitoring data and generate evaluation metrics, confusion matrix, and ROC-AUC curve.
+    
+    Parameters:
+        data (DataFrame): Monitoring dataset.
+        target_column_name (str): Name of the target column.
+        models (dict): Dictionary containing trained models.
+        dataset_name (str): Name of the dataset.
+        
+    Returns:
+        metrics_df (DataFrame): DataFrame of evaluation metrics.
+    """
+    metrics = []
+    fpr_tpr = []
+    for model_name, model in models.items():
+        # Split data into features (X) and target (y)
+        X_monitoring = data.drop(target_column_name, axis=1)
+        y_monitoring = data[target_column_name]
+        
+        # Predictions
+        y_pred = model.predict(X_monitoring)
+        y_prob = model.predict_proba(X_monitoring)[:, 1]
+        
+        # Evaluation metrics
+        accuracy = accuracy_score(y_monitoring, y_pred)
+        precision = precision_score(y_monitoring, y_pred)
+        recall = recall_score(y_monitoring, y_pred)
+        f1 = f1_score(y_monitoring, y_pred)
+        
+        # Confusion Matrix Plot
+        cm = confusion_matrix(y_monitoring, y_pred)
+        x = ['Predicted Negative', 'Predicted Positive']
+        y = ['Actual Negative', 'Actual Positive']
+        z = cm.tolist()
+        fig_cm = go.Figure(data=go.Heatmap(z=z, x=x, y=y, colorscale='blues',showscale=True))
+        
+        annotations = []
+        for i, row in enumerate(z):
+            for j, value in enumerate(row):
+                color = 'black' if value < (cm.max() / 2) else 'white'
+                annotations.append({
+                    "x": x[j],
+                    "y": y[i],
+                    "font": {"color": color, "size": 16},
+                    "text": str(value),
+                    "xref": "x1",
+                    "yref": "y1",
+                    "showarrow": False
+                })
+    
+        fig_cm.update_layout(
+            title=f'Confusion Matrix - {dataset_name} ({model_name})',
+            title_x=0.5,
+            annotations=annotations
+        )
+        
+        fig_cm.show()
+        f.save_graph(fig_cm)
+        
+        # ROC-AUC Curve Plot
+        fpr, tpr, _ = roc_curve(y_monitoring, y_prob)
+        auc_score = roc_auc_score(y_monitoring, y_prob)
+        
+        roc_trace = go.Scatter(x=fpr,
+                               y=tpr,
+                               mode='lines',
+                               name=f'{dataset_name} ({model_name}) (AUC = {auc_score:.2f})')
+        
+        roc_layout = go.Layout(title=f'ROC-AUC Curve - {dataset_name} ({model_name})',
+                               xaxis=dict(title='False Positive Rate'),
+                               yaxis=dict(title='True Positive Rate'))
+        
+        fig_roc = go.Figure(data=[roc_trace], layout=roc_layout)
+        fig_roc.add_shape(type='line', line=dict(dash='dash'), x0=0, x1=1, y0=0, y1=1)
+        fig_roc.show()
+        f.save_graph(fig_roc)
+        
+        # Append evaluation metrics to the list
+        metrics.append([model_name, accuracy, precision, recall, f1])
+        fpr_tpr.append([model_name,fpr,tpr])
+        
+    
+    # Create DataFrame of evaluation metrics
+    metrics_df = np.round(pd.DataFrame(metrics, columns=['Model', 'Accuracy', 'Precision', 'Recall', 'F1-Score']),2)
+    metrics_df['Accuracy'] = pd.to_numeric(metrics_df['Accuracy'])
+    metrics_df = metrics_df.sort_values(by='Accuracy', ascending=False)
+    metrics_df = metrics_df.reset_index(drop=True)
+
+    fpr_tpr_df = np.round(pd.DataFrame(fpr_tpr, columns =['Model','FPR','TPR']),2)
+
+    f.save_table(metrics_df, f'{dataset_name}')
+
+   ############### For Tpr and FPR ###################################
+    tpr_fpr_randomforest=fpr_tpr_df.iloc[[1]]
+
+    # Create a DataFrame
+    df_tpr_fpr_randomforest = pd.DataFrame({'FPR': tpr_fpr_randomforest['FPR'].iloc[0], 'TPR':tpr_fpr_randomforest['TPR'].iloc[0]})
+
+    f.save_table(df_tpr_fpr_randomforest, f'{dataset_name}')
+   ################################################################
+    
+    return metrics_df
+
+# Function for evaluating all models on monitoring_df_1
+def evaluate_monitoring_df_1(models):
+    """
+    Evaluate all models on monitoring_df_1 and generate evaluation metrics, confusion matrices, and ROC-AUC curves.
+    
+    Parameters:
+        models (dict): Dictionary containing trained models.
+        
+    Returns:
+        metrics_df (DataFrame): DataFrame of evaluation metrics.
+    """
+    metrics_df_1= evaluate_monitoring_data(monitoring_df_1, target_column, models, 'Monitoring Data 1')
+    return metrics_df_1
+
+# Function for evaluating all models on monitoring_df_2
+def evaluate_monitoring_df_2(models):
+    """
+    Evaluate all models on monitoring_df_2 and generate evaluation metrics, confusion matrices, and ROC-AUC curves.
+    
+    Parameters:
+        models (dict): Dictionary containing trained models.
+        
+    Returns:
+        metrics_df (DataFrame): DataFrame of evaluation metrics.
+    """
+    metrics_df_2 = evaluate_monitoring_data(monitoring_df_2, target_column, models, 'Monitoring Data 2')
+    return metrics_df_2
+
+# Example usage:
+evaluate_monitoring_df_1(trained_models)
+evaluate_monitoring_df_2(trained_models)
+
+
+#-------------------------------------------Saving Models----------------------------------------------#
+# Model 1: Logistic Regression
+f.create_model(lr_model, 'Logistic Regression', 'Copy final encoded data', target_column)
+
+# Model 2: Random Forest Classifier
+f.create_model(rf_model, 'Random Forest Classifier', 'Copy final encoded data', target_column)
+
+# Model 3: XGBoost Classifier
+f.create_model(xgb_model, 'XGBoost Classifier', 'Copy final encoded data', target_column)

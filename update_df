@@ -1,0 +1,17 @@
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+from Console.package import Functions
+
+
+f = Functions()
+
+table = f.get_args("table")
+# your code here
+print(len(table.columns))
+print(table)
+# your code here
+table.loc[len(table.index)]=["2008 Q4", 0,25,5,5]
+print(table)
+f.update_df(table, table_name ="ME_CSV_TS")

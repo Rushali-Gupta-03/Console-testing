@@ -1,0 +1,8 @@
+x = np.array([0,6])
+y = np.array([1,3])
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+ax.plot(x, y, color='tab:blue')
+# plt.plot(xpoints, ypoints)
+# plt.show()
+f.save_image(fig)
