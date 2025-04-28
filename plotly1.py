@@ -26,4 +26,5 @@ fig.update_layout(
 )
 
 # Show the figure
-fig.show()
+# fig.show()
+wd.save_graph(fig)
