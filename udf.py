@@ -10,19 +10,6 @@ from catboost import CatBoostClassifier
 
 wd = WarpDrive()
 
-df = wd.get_args("df")
-mod = wd.get_args("mod")
-strr = wd.get_args("strr")
-csv = wd.get_args("csv")
-cols = wd.get_args("col")
-# your code here
-df1 = pd.read_csv('consolefiles/csv.csv')
-wd.save_table(df)
-wd.save_table(df1)
-wd.save_table(cols)
-wd.create_df(df)
-exog_columns = ["Loan_Amount", "Home_Owner"]
-
 # Train the CatBoostClassifier only on the exogenous columns
 clf = CatBoostClassifier(random_state=0).fit(df[exog_columns].values, df['Gender'].values)
 
